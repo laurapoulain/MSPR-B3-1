@@ -1,0 +1,62 @@
+# ========================================
+# Fichier: .gitignore
+# ========================================
+
+# Environnement Python
+venv/
+env/
+ENV/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Fichiers de configuration sensibles
+.env
+*.ini
+*.conf
+
+# Répertoires de sortie
+out/
+backups/
+audits/
+diagnostics/
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# Documentation générée
+docs/_build/
+
+# Fichiers temporaires
+*.tmp
+*.bak
+*.log
+temp/
+tmp/
+
+# Sauvegardes MySQL
+*.sql
+*.csv
+
+# ========================================
+# FIN DE .gitignore
+# ========================================

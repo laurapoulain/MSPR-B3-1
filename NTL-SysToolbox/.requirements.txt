@@ -5,3 +5,6 @@ dnspython
 wmi
 pywinrm
 python-dotenv
+python-nmap
+rich
+pyfiglet

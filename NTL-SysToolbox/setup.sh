@@ -3,7 +3,7 @@ echo "=== Installation de NTL-SysToolbox ==="
 
 # Mise à jour et dépendances
 sudo apt update -y
-sudo apt install -y mysql-client python3-venv
+sudo apt install -y mysql-client python3-venv nmap
 
 
 # Création environnement virtuel

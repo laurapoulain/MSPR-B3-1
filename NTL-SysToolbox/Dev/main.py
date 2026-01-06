@@ -9,15 +9,8 @@ from datetime import datetime
 # Import des modules
 from diagnostic import main as diagnostic_main
 from sauvegarde import sauvegarde_sql, export_table_csv
+from audit import main as audit_main
 
-try:
-    from audit import main as audit_main  # module Audit (menu principal audit)
-except ImportError:
-    audit_main = None
-
-# Si ton module audit expose des fonctions spécifiques,
-# tu pourras les importer ici, par exemple :
-# from audit import run_csv_audit_flow, run_eol_lookup_flow
 
 
 # ===========================================================
@@ -37,25 +30,17 @@ def print_header():
 
 
 # ===========================================================
-# Sous-menu stylé pour l'audit
+# Sous-menu pour l'audit
 # ===========================================================
 
 def audit_menu():
-    """Sous-menu dédié au module d'audit d'obsolescence."""
-    if audit_main is None:
-        print("[ERREUR] Module Audit non disponible (import impossible).")
-        input("Appuyez sur Entrée pour revenir au menu...")
-        return
-
+    """Sous-menu module d'audit d'obsolescence."""
     while True:
         clear_screen()
         print("=" * 60)
         print("        MODULE AUDIT D'OBSOLESCENCE - NTL-SysToolbox")
         print("=" * 60)
         print("1. Lancer l'audit d'obsolescence")
-        # Si tu as des fonctions séparées dans audit.py, tu peux détailler :
-        # print("1. Auditer un fichier CSV d'inventaire")
-        # print("2. Consulter les dates EOL pour un OS")
         print("0. Retour au menu principal\n")
 
         choice = input("Votre choix : ").strip()
@@ -63,13 +48,9 @@ def audit_menu():
         if choice == "1":
             clear_screen()
             print("[INFO] Exécution du module Audit d'obsolescence...\n")
-            audit_main()   # ici tu peux appeler une fonction plus spécifique si tu en as une
+            audit_main()   #
             print("\n[OK] Module Audit terminé.\n")
             input("Appuyez sur Entrée pour revenir au menu Audit...")
-        # elif choice == "2":
-        #     clear_screen()
-        #     run_eol_lookup_flow()
-        #     input("Appuyez sur Entrée pour revenir au menu Audit...")
         elif choice == "0":
             break
         else:

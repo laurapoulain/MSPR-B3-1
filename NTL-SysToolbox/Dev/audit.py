@@ -1,515 +1,323 @@
 #!/usr/bin/env python3
-"""
-Module d'audit d'obsolescence pour NTL-SysToolbox
-Scanne le réseau et identifie les systèmes obsolètes (EOL)
-"""
+# ===========================================================
+# Module Audit d'obsolescence - NTL-SysToolbox
+# ===========================================================
 
-import os
-import sys
+import csv
 import json
-import socket
-import subprocess
-import requests
 from datetime import datetime, date
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Any
+import nmap  # pour le scan réseau
 
-# Import des modules locaux
-sys.path.insert(0, str(Path(__file__).parent))
-from config import Config
-from utils import (
-    save_json_output, format_timestamp, get_iso_timestamp,
-    create_result, print_success, print_error, print_warning,
-    print_info, print_header, print_separator, validate_network
-)
+#visuel
+from rich.console import Console
+from rich.panel import Panel
+from rich.rule import Rule
+import pyfiglet
+
+console = Console()
 
 
-class NetworkAudit:
-    """Classe pour l'audit réseau et obsolescence"""
-    
-    def __init__(self):
-        """Initialise le module d'audit"""
-        self.eol_cache = {}
-    
-    def ping_host(self, ip: str, timeout: int = 2) -> bool:
-        """
-        Ping un hôte pour vérifier s'il est accessible
-        
-        Args:
-            ip: Adresse IP
-            timeout: Timeout en secondes
-        
-        Returns:
-            bool: True si accessible
-        """
-        try:
-            # Commande ping selon l'OS
-            param = '-n' if sys.platform.lower() == 'win32' else '-c'
-            timeout_param = '-w' if sys.platform.lower() == 'win32' else '-W'
-            
-            command = ['ping', param, '1', timeout_param, str(timeout), ip]
-            result = subprocess.run(
-                command,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=timeout + 1
-            )
-            return result.returncode == 0
-        except Exception:
-            return False
-    
-    def scan_network_simple(self, network: str, max_hosts: int = 254) -> List[Dict]:
-        """
-        Scan réseau simple avec ping
-        
-        Args:
-            network: Réseau CIDR (ex: 192.168.10.0/24)
-            max_hosts: Nombre max d'hôtes à scanner
-        
-        Returns:
-            list: Liste des hôtes trouvés
-        """
-        hosts_found = []
-        
-        # Parser le réseau CIDR
-        if '/' not in network:
-            print_error(f"Format réseau invalide: {network}")
-            return hosts_found
-        
-        ip_base, mask = network.split('/')
-        ip_parts = ip_base.split('.')
-        
-        if len(ip_parts) != 4:
-            print_error(f"Adresse IP invalide: {ip_base}")
-            return hosts_found
-        
-        # Scan simple pour /24
-        if mask == '24':
-            base = '.'.join(ip_parts[:3])
-            print_info(f"Scan du réseau {network}...")
-            
-            for i in range(1, min(max_hosts + 1, 255)):
-                ip = f"{base}.{i}"
-                
-                if i % 50 == 0:
-                    print(f"  → Progression: {i}/{max_hosts} hôtes testés")
-                
-                if self.ping_host(ip, timeout=1):
-                    hostname = self.get_hostname(ip)
-                    os_info = self.detect_os_simple(ip)
-                    
-                    host_info = {
-                        'ip': ip,
-                        'hostname': hostname,
-                        'os': os_info['os'],
-                        'os_version': os_info.get('version', 'unknown')
-                    }
-                    hosts_found.append(host_info)
-                    print_info(f"  ✓ Hôte trouvé: {ip} ({hostname})")
-        else:
-            print_warning(f"Scan limité au /24 pour le moment. Réseau: {network}")
-        
-        return hosts_found
-    
-    def get_hostname(self, ip: str) -> str:
-        """
-        Récupère le nom d'hôte d'une IP
-        
-        Args:
-            ip: Adresse IP
-        
-        Returns:
-            str: Nom d'hôte ou 'unknown'
-        """
-        try:
-            hostname = socket.gethostbyaddr(ip)[0]
-            return hostname
-        except Exception:
-            return 'unknown'
-    
-    def detect_os_simple(self, ip: str) -> Dict:
-        """
-        Détection OS simple via TTL
-        
-        Args:
-            ip: Adresse IP
-        
-        Returns:
-            dict: Informations OS détectées
-        """
-        os_info = {
-            'os': 'unknown',
-            'version': 'unknown',
-            'method': 'ttl_detection'
-        }
-        
-        try:
-            # Utiliser TTL pour deviner l'OS
-            param = '-n' if sys.platform.lower() == 'win32' else '-c'
-            command = ['ping', param, '1', ip]
-            
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                timeout=3
-            )
-            
-            output = result.stdout.lower()
-            
-            # Analyser le TTL
-            if 'ttl=' in output:
-                ttl_str = output.split('ttl=')[1].split()[0]
-                ttl = int(ttl_str)
-                
-                # Heuristique basique sur TTL
-                if ttl <= 64:
-                    os_info['os'] = 'Linux/Unix'
-                elif ttl <= 128:
-                    os_info['os'] = 'Windows'
-                elif ttl <= 255:
-                    os_info['os'] = 'Cisco/Network Device'
-                
-        except Exception:
-            pass
-        
-        return os_info
-    
-    def get_eol_info(self, product: str) -> Optional[Dict]:
-        """
-        Récupère les infos EOL depuis endoflife.date API
-        
-        Args:
-            product: Nom du produit (ex: 'ubuntu', 'windows-server')
-        
-        Returns:
-            dict: Infos EOL ou None
-        """
-        # Vérifier le cache
-        if product in self.eol_cache:
-            return self.eol_cache[product]
-        
-        try:
-            url = f"{Config.EOL_DATA_SOURCE}{product}.json"
-            response = requests.get(url, timeout=5)
-            
-            if response.status_code == 200:
-                data = response.json()
-                self.eol_cache[product] = data
-                return data
-            else:
-                return None
-        except Exception as e:
-            print_warning(f"Erreur API EOL pour {product}: {e}")
-            return None
-    
-    def check_eol_status(self, os_name: str, os_version: str) -> Dict:
-        """
-        Vérifie le statut EOL d'un système
-        
-        Args:
-            os_name: Nom de l'OS
-            os_version: Version de l'OS
-        
-        Returns:
-            dict: Statut EOL
-        """
-        result = {
-            'os': os_name,
-            'version': os_version,
-            'eol_date': None,
-            'is_eol': False,
-            'support_status': 'unknown',
-            'days_until_eol': None
-        }
-        
-        # Mapper les noms d'OS vers les produits endoflife.date
-        os_mapping = {
-            'ubuntu': 'ubuntu',
-            'debian': 'debian',
-            'centos': 'centos',
-            'rhel': 'rhel',
-            'windows server': 'windows-server',
-            'windows': 'windows',
-            'macos': 'macos'
-        }
-        
-        # Trouver le produit correspondant
-        product = None
-        for key, value in os_mapping.items():
-            if key in os_name.lower():
-                product = value
-                break
-        
-        if not product:
-            result['support_status'] = 'unknown_product'
-            return result
-        
-        # Récupérer les infos EOL
-        eol_data = self.get_eol_info(product)
-        
-        if not eol_data:
-            result['support_status'] = 'api_error'
-            return result
-        
-        # Chercher la version correspondante
-        for version_info in eol_data:
-            if str(version_info.get('cycle', '')) == str(os_version):
-                eol_date_str = version_info.get('eol')
-                
-                if eol_date_str and eol_date_str != False:
-                    try:
-                        eol_date = datetime.strptime(str(eol_date_str), '%Y-%m-%d').date()
-                        result['eol_date'] = str(eol_date)
-                        
-                        today = date.today()
-                        result['is_eol'] = eol_date < today
-                        
-                        if not result['is_eol']:
-                            days_until = (eol_date - today).days
-                            result['days_until_eol'] = days_until
-                            
-                            if days_until <= 90:
-                                result['support_status'] = 'ending_soon'
-                            else:
-                                result['support_status'] = 'active'
-                        else:
-                            result['support_status'] = 'eol'
-                    except Exception:
-                        result['support_status'] = 'parse_error'
-                
-                break
-        
+def scan_network_simple(cidr: str) -> List[Dict[str, str]]:
+    """
+    Scanne une plage réseau (ex: '192.168.56.0/24') avec Nmap
+    et renvoie une liste de machines au format:
+    hostname, ip, os, version.
+    """
+    scanner = nmap.PortScanner()
+    console.print(f"[bold cyan][INFO][/bold cyan] Scan réseau sur [white]{cidr}[/white] ...")
+    scanner.scan(hosts=cidr, arguments='-O -T4')  # -O = détection OS
+
+    components: List[Dict[str, str]] = []
+
+    for host in scanner.all_hosts():
+        ip = host
+        hostname = scanner[host].hostname() or host
+
+        detected_os = "Unknown"
+        detected_version = "Unknown"
+
+        if "osmatch" in scanner[host] and scanner[host]["osmatch"]:
+            osmatch = scanner[host]["osmatch"][0]
+            os_name = osmatch.get("name", "")
+            detected_os = os_name or "Unknown"
+
+        components.append(
+            {
+                "hostname": hostname,
+                "ip": ip,
+                "os": detected_os,
+                "version": detected_version,
+            }
+        )
+
+    return components
+
+
+def parse_inventory_csv(csv_path: str) -> List[Dict[str, str]]:
+    """
+    Lit un CSV d’inventaire.
+    Colonnes minimales : hostname, ip, os, version
+    """
+    components: List[Dict[str, str]] = []
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            components.append(row)
+    return components
+
+
+def load_eol_database(json_path: str) -> Dict[str, Dict[str, str]]:
+    """
+    Charge le référentiel EOL depuis un fichier JSON.
+    """
+    with open(json_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def normalize_os_and_version(os_name: str, version: str) -> tuple[str, str]:
+    """
+    Simplifie les noms d'OS détectés pour coller au référentiel EOL.
+    Exemple :
+      'Microsoft Windows Server 2022' -> ('Windows Server', '2022')
+    """
+    if not os_name:
+        return os_name, version
+
+    # Cas Windows Server
+    if "Windows Server 2022" in os_name:
+        return "Windows Server", "2022"
+    if "Windows Server 2019" in os_name:
+        return "Windows Server", "2019"
+    if "Windows Server 2016" in os_name:
+        return "Windows Server", "2016"
+    if "Windows Server 2012" in os_name:
+        return "Windows Server", "2012"
+
+    return os_name, version
+
+
+def classify_component(
+    component: Dict[str, str],
+    eol_db: Dict[str, Dict[str, str]],
+    warning_months: int = 12,
+) -> Dict[str, Any]:
+    """
+    Ajoute les infos EOL + statut à un composant.
+    Statuts possibles : supported, warning, eol, unknown.
+    """
+    raw_os = component.get("os")
+    raw_version = component.get("version")
+    os_name, version = normalize_os_and_version(raw_os, raw_version)
+
+    result: Dict[str, Any] = dict(component)
+
+    eol_date_str = eol_db.get(os_name, {}).get(version)
+    if not eol_date_str:
+        result["eol_date"] = None
+        result["status"] = "unknown"
         return result
-    
-    def generate_audit_report(self, hosts: List[Dict]) -> Dict:
-        """
-        Génère un rapport d'audit complet
-        
-        Args:
-            hosts: Liste des hôtes scannés
-        
-        Returns:
-            dict: Rapport d'audit
-        """
-        report = {
-            'timestamp': get_iso_timestamp(),
-            'total_hosts': len(hosts),
-            'hosts': [],
-            'summary': {
-                'eol_systems': 0,
-                'ending_soon': 0,
-                'active_support': 0,
-                'unknown_status': 0
-            }
-        }
-        
-        print_info("Génération du rapport d'audit...")
-        
-        for host in hosts:
-            print(f"  → Analyse: {host['ip']} ({host['hostname']})")
-            
-            # Vérifier le statut EOL
-            eol_status = self.check_eol_status(host['os'], host['os_version'])
-            
-            host_report = {
-                'ip': host['ip'],
-                'hostname': host['hostname'],
-                'os': host['os'],
-                'os_version': host['os_version'],
-                'eol_info': eol_status
-            }
-            
-            # Mettre à jour le résumé
-            status = eol_status['support_status']
-            if status == 'eol':
-                report['summary']['eol_systems'] += 1
-            elif status == 'ending_soon':
-                report['summary']['ending_soon'] += 1
-            elif status == 'active':
-                report['summary']['active_support'] += 1
-            else:
-                report['summary']['unknown_status'] += 1
-            
-            report['hosts'].append(host_report)
-        
-        return report
-    
-    def run_full_audit(self, networks: List[str] = None) -> Dict:
-        """
-        Exécute un audit complet
-        
-        Args:
-            networks: Liste des réseaux à scanner
-        
-        Returns:
-            dict: Résultats de l'audit
-        """
-        if networks is None:
-            networks = Config.SCAN_NETWORKS
-        
-        print_header("🧾 Audit d'Obsolescence", 70)
-        
-        all_hosts = []
-        
-        for network in networks:
-            if not validate_network(network):
-                print_error(f"Réseau invalide: {network}")
-                continue
-            
-            print_separator("-", 70)
-            hosts = self.scan_network_simple(network)
-            all_hosts.extend(hosts)
-            print_success(f"{len(hosts)} hôte(s) trouvé(s) sur {network}")
-        
-        # Générer le rapport
-        print("\n")
-        print_separator("-", 70)
-        report = self.generate_audit_report(all_hosts)
-        
-        # Afficher le résumé
-        print("\n")
-        print_separator("=", 70)
-        print_header("📊 Résumé de l'Audit", 70)
-        print(f"\nHôtes scannés: {report['total_hosts']}")
-        print(f"  🔴 Systèmes EOL: {report['summary']['eol_systems']}")
-        print(f"  🟠 Support bientôt terminé: {report['summary']['ending_soon']}")
-        print(f"  🟢 Support actif: {report['summary']['active_support']}")
-        print(f"  ⚪ Statut inconnu: {report['summary']['unknown_status']}")
-        
-        return report
 
+    eol_date = datetime.strptime(eol_date_str, "%Y-%m-%d").date()
+    today = date.today()
+    result["eol_date"] = eol_date_str
 
-def list_available_os_products():
-    """Liste les produits disponibles sur endoflife.date"""
-    print_info("Récupération de la liste des produits...")
-    
-    try:
-        url = f"{Config.EOL_DATA_SOURCE}all.json"
-        response = requests.get(url, timeout=5)
-        
-        if response.status_code == 200:
-            products = response.json()
-            print(f"\n{len(products)} produits disponibles:\n")
-            
-            # Afficher par catégories
-            os_products = [p for p in products if any(x in p.lower() for x in ['ubuntu', 'debian', 'centos', 'windows', 'rhel', 'macos'])]
-            
-            print("Systèmes d'exploitation:")
-            for product in sorted(os_products):
-                print(f"  • {product}")
-            
-            return products
+    if eol_date < today:
+        result["status"] = "eol"
+    else:
+        delta_warning_days = warning_months * 30
+        if (eol_date - today).days <= delta_warning_days:
+            result["status"] = "warning"
         else:
-            print_error("Impossible de récupérer la liste")
-            return []
-    except Exception as e:
-        print_error(f"Erreur: {e}")
-        return []
+            result["status"] = "supported"
 
-
-def get_os_versions(product: str):
-    """Affiche les versions EOL d'un produit"""
-    print_info(f"Récupération des versions de {product}...")
-    
-    audit = NetworkAudit()
-    eol_data = audit.get_eol_info(product)
-    
-    if not eol_data:
-        print_error(f"Produit introuvable: {product}")
-        return
-    
-    print(f"\nVersions de {product}:\n")
-    print(f"{'Version':<15} {'EOL Date':<15} {'Support Status':<20}")
-    print("-" * 50)
-    
-    for version in eol_data:
-        cycle = str(version.get('cycle', 'N/A'))
-        eol = str(version.get('eol', 'N/A'))
-        
-        # Déterminer le statut
-        status = "N/A"
-        if eol != 'N/A' and eol != 'False':
-            try:
-                eol_date = datetime.strptime(eol, '%Y-%m-%d').date()
-                if eol_date < date.today():
-                    status = "🔴 EOL"
-                elif (eol_date - date.today()).days <= 90:
-                    status = "🟠 Ending Soon"
-                else:
-                    status = "🟢 Active"
-            except Exception:
-                pass
-        
-        print(f"{cycle:<15} {eol:<15} {status:<20}")
-
-
-def run_audit_interactive():
-    """Mode interactif pour l'audit"""
-    print_header("🧾 Module Audit d'Obsolescence", 70)
-    
-    audit = NetworkAudit()
-    
-    print("\nOptions disponibles:")
-    print("1. Audit complet (scan tous les réseaux configurés)")
-    print("2. Scanner un réseau spécifique")
-    print("3. Lister les produits disponibles (EOL)")
-    print("4. Afficher les versions EOL d'un produit")
-    print("5. Vérifier le statut EOL d'un système")
-    print("0. Retour")
-    
-    choice = input("\nVotre choix: ").strip()
-    
-    if choice == '1':
-        print("\n")
-        result = audit.run_full_audit()
-        
-        # Sauvegarder
-        output_file = Config.AUDIT_DIR / f"audit_{format_timestamp()}.json"
-        save_json_output(result, output_file)
-        print(f"\n✅ Audit sauvegardé: {output_file}")
-        
-    elif choice == '2':
-        network = input("\nRéseau CIDR (ex: 192.168.10.0/24): ").strip()
-        if validate_network(network):
-            print("\n")
-            result = audit.run_full_audit([network])
-            
-            output_file = Config.AUDIT_DIR / f"audit_{format_timestamp()}.json"
-            save_json_output(result, output_file)
-            print(f"\n✅ Audit sauvegardé: {output_file}")
-        else:
-            print_error("Format réseau invalide")
-    
-    elif choice == '3':
-        print("\n")
-        list_available_os_products()
-    
-    elif choice == '4':
-        product = input("\nNom du produit (ex: ubuntu, windows-server): ").strip()
-        print("\n")
-        get_os_versions(product)
-    
-    elif choice == '5':
-        os_name = input("\nNom de l'OS: ").strip()
-        os_version = input("Version: ").strip()
-        print("\n")
-        result = audit.check_eol_status(os_name, os_version)
-        print(json.dumps(result, indent=2, ensure_ascii=False))
-
-
-def run_audit_batch():
-    """Mode batch pour l'audit"""
-    audit = NetworkAudit()
-    result = audit.run_full_audit()
-    
-    # Sauvegarder
-    output_file = Config.AUDIT_DIR / f"audit_{format_timestamp()}.json"
-    save_json_output(result, output_file)
-    print(f"\n✅ Audit sauvegardé: {output_file}")
-    
     return result
 
 
-if __name__ == "__main__":
-    run_audit_interactive()
+def evaluate_components(
+    components: List[Dict[str, str]],
+    eol_db: Dict[str, Dict[str, str]],
+    warning_months: int = 12,
+) -> List[Dict[str, Any]]:
+    """
+    Applique classify_component à toute la liste.
+    """
+    return [
+        classify_component(c, eol_db, warning_months=warning_months)
+        for c in components
+    ]
+
+
+def export_report_csv(components: List[Dict[str, Any]], output_path: str) -> None:
+    """
+    Exporte le rapport au format CSV.
+    """
+    if not components:
+        console.print("[bold yellow][WARN][/bold yellow] Aucun composant à exporter (liste vide).")
+        return
+
+    output_file = Path(output_path)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    fieldnames = list(components[0].keys())
+    with open(output_file, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(components)
+
+
+def export_report_json(components: List[Dict[str, Any]], output_path: str) -> None:
+    """
+    Exporte le rapport au format JSON structuré.
+    """
+    output_file = Path(output_path)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    data = {
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "components": components,
+    }
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+
+def list_os_versions(os_name: str, eol_db: Dict[str, Dict[str, str]]) -> None:
+    """
+    Affiche toutes les versions d'un OS et leurs dates EOL
+    à partir de la base EOL.
+    """
+    versions = eol_db.get(os_name)
+    if not versions:
+        console.print(f"[bold yellow][WARN][/bold yellow] Aucun OS nommé '{os_name}' dans la base EOL.")
+        return
+
+    console.print(f"[bold cyan]Versions connues pour {os_name} :[/bold cyan]")
+    for version, eol in versions.items():
+        console.print(f"- [white]{os_name} {version}[/white] : EOL = [bold]{eol}[/bold]")
+
+
+# ===========================================================
+# Flows "métier" de l'audit
+# ===========================================================
+
+def run_csv_audit_flow() -> None:
+    """Audit à partir d'un inventaire CSV."""
+    inventory_path = console.input("Chemin du fichier CSV d'inventaire : ").strip()
+    console.print("\n[bold cyan][INFO][/bold cyan] Lecture de l'inventaire...")
+    components = parse_inventory_csv(inventory_path)
+
+    eol_path = console.input("Chemin du fichier JSON EOL : ").strip()
+    output_csv = console.input("Chemin du rapport CSV de sortie : ").strip()
+    output_json = console.input("Chemin du rapport JSON de sortie : ").strip()
+    warning_months_str = console.input(
+        "Nombre de mois avant EOL pour passer en 'warning' (12 par défaut) : "
+    ).strip()
+    warning_months = int(warning_months_str) if warning_months_str else 12
+
+    console.print("[bold cyan][INFO][/bold cyan] Chargement de la base EOL...")
+    eol_db = load_eol_database(eol_path)
+
+    console.print("[bold cyan][INFO][/bold cyan] Évaluation de l'obsolescence...")
+    evaluated = evaluate_components(components, eol_db, warning_months=warning_months)
+
+    console.print("[bold cyan][INFO][/bold cyan] Export des rapports...")
+    export_report_csv(evaluated, output_csv)
+    export_report_json(evaluated, output_json)
+
+    console.print(f"\n[bold green]✔ Audit terminé. Rapports générés :[/bold green]")
+    console.print(f"- [white]{output_csv}[/white]")
+    console.print(f"- [white]{output_json}[/white]")
+
+
+def run_scan_audit_flow() -> None:
+    """Audit après scan réseau Nmap."""
+    cidr = console.input("Plage réseau à scanner (ex: 192.168.56.0/24) : ").strip()
+    components = scan_network_simple(cidr)
+    console.print(f"[bold cyan][INFO][/bold cyan] {len(components)} machine(s) détectée(s).")
+
+    eol_path = console.input("Chemin du fichier JSON EOL : ").strip()
+    output_csv = console.input("Chemin du rapport CSV de sortie : ").strip()
+    output_json = console.input("Chemin du rapport JSON de sortie : ").strip()
+    warning_months_str = console.input(
+        "Nombre de mois avant EOL pour passer en 'warning' (12 par défaut) : "
+    ).strip()
+    warning_months = int(warning_months_str) if warning_months_str else 12
+
+    console.print("[bold cyan][INFO][/bold cyan] Chargement de la base EOL...")
+    eol_db = load_eol_database(eol_path)
+
+    console.print("[bold cyan][INFO][/bold cyan] Évaluation de l'obsolescence...")
+    evaluated = evaluate_components(components, eol_db, warning_months=warning_months)
+
+    console.print("[bold cyan][INFO][/bold cyan] Export des rapports...")
+    export_report_csv(evaluated, output_csv)
+    export_report_json(evaluated, output_json)
+
+    console.print(f"\n[bold green]✔ Audit terminé. Rapports générés :[/bold green]")
+    console.print(f"- [white]{output_csv}[/white]")
+    console.print(f"- [white]{output_json}[/white]")
+
+
+def run_eol_consult_flow() -> None:
+    """Consultation des EOL pour un OS."""
+    eol_path = console.input("Chemin du fichier JSON EOL : ").strip()
+    eol_db = load_eol_database(eol_path)
+    os_name = console.input("Nom de l'OS (ex: 'Windows Server' ou 'Ubuntu') : ").strip()
+    console.print("")  # petite ligne vide
+    list_os_versions(os_name, eol_db)
+
+
+# ===========================================================
+# Menu du module audit
+# ===========================================================
+
+def run_audit_obsolescence() -> None:
+    """Menu interactif du module d'audit d'obsolescence."""
+    while True:
+        console.clear()
+
+        banner = pyfiglet.figlet_format("AUDIT EOL", font="slant")
+        console.print(f"[bold magenta]{banner}[/bold magenta]")
+
+        console.print(Panel.fit(
+            "[bold white]Module d'audit d'obsolescence - NTL-SysToolbox[/bold white]\n\n"
+            "[cyan]1.[/cyan] Auditer un [bold]fichier CSV[/bold] d'inventaire\n"
+            "[cyan]2.[/cyan] Scanner une [bold]plage IP[/bold] et auditer\n"
+            "[cyan]3.[/cyan] Consulter les [bold]dates EOL[/bold] pour un OS\n"
+            "[red]0.[/red] Retour au menu principal",
+            border_style="magenta",
+            title="[bold magenta]AUDIT D'OBSOLESCENCE[/bold magenta]",
+            subtitle="[green]NTL-SysToolbox[/green]",
+        ))
+
+        mode = console.input("\n[bold cyan]Votre choix[/bold cyan] : ").strip() or "1"
+
+        if mode == "1":
+            console.clear()
+            console.print(Rule("[bold cyan]Audit CSV d'inventaire[/bold cyan]"))
+            run_csv_audit_flow()
+            console.input("\n[dim]Appuyez sur Entrée pour revenir au menu Audit...[/dim]")
+        elif mode == "2":
+            console.clear()
+            console.print(Rule("[bold cyan]Scan réseau + audit[/bold cyan]"))
+            run_scan_audit_flow()
+            console.input("\n[dim]Appuyez sur Entrée pour revenir au menu Audit...[/dim]")
+        elif mode == "3":
+            console.clear()
+            console.print(Rule("[bold cyan]Consultation des dates EOL[/bold cyan]"))
+            run_eol_consult_flow()
+            console.input("\n[dim]Appuyez sur Entrée pour revenir au menu Audit...[/dim]")
+        elif mode == "0":
+            break
+        else:
+            console.print("\n[bold red]✖ Choix invalide. Merci de réessayer.[/bold red]")
+            console.input("\n[dim]Appuyez sur Entrée pour continuer...[/dim]")
+
+
+def main() -> None:
+    """
+    Point d’entrée utilisé par main.py :
+    from audit import main as audit_main
+    """
+    run_audit_obsolescence()

@@ -11,9 +11,13 @@ from diagnostic import main as diagnostic_main
 from sauvegarde import sauvegarde_sql, export_table_csv
 
 try:
-    from audit import main as audit_main  # si le module 3 est dispo
+    from audit import main as audit_main  # module Audit (menu principal audit)
 except ImportError:
     audit_main = None
+
+# Si ton module audit expose des fonctions spécifiques,
+# tu pourras les importer ici, par exemple :
+# from audit import run_csv_audit_flow, run_eol_lookup_flow
 
 
 # ===========================================================
@@ -30,6 +34,47 @@ def print_header():
     print("              NTL-SysToolbox - Menu CLI")
     print("=" * 60)
     print(f"Date : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+
+
+# ===========================================================
+# Sous-menu stylé pour l'audit
+# ===========================================================
+
+def audit_menu():
+    """Sous-menu dédié au module d'audit d'obsolescence."""
+    if audit_main is None:
+        print("[ERREUR] Module Audit non disponible (import impossible).")
+        input("Appuyez sur Entrée pour revenir au menu...")
+        return
+
+    while True:
+        clear_screen()
+        print("=" * 60)
+        print("        MODULE AUDIT D'OBSOLESCENCE - NTL-SysToolbox")
+        print("=" * 60)
+        print("1. Lancer l'audit d'obsolescence")
+        # Si tu as des fonctions séparées dans audit.py, tu peux détailler :
+        # print("1. Auditer un fichier CSV d'inventaire")
+        # print("2. Consulter les dates EOL pour un OS")
+        print("0. Retour au menu principal\n")
+
+        choice = input("Votre choix : ").strip()
+
+        if choice == "1":
+            clear_screen()
+            print("[INFO] Exécution du module Audit d'obsolescence...\n")
+            audit_main()   # ici tu peux appeler une fonction plus spécifique si tu en as une
+            print("\n[OK] Module Audit terminé.\n")
+            input("Appuyez sur Entrée pour revenir au menu Audit...")
+        # elif choice == "2":
+        #     clear_screen()
+        #     run_eol_lookup_flow()
+        #     input("Appuyez sur Entrée pour revenir au menu Audit...")
+        elif choice == "0":
+            break
+        else:
+            print("\nChoix invalide. Réessayez.\n")
+            input("Appuyez sur Entrée pour continuer...")
 
 
 # ===========================================================
@@ -52,11 +97,9 @@ def module_sauvegarde():
 
 
 def module_audit():
-    print("[INFO] Exécution du module Audit d'obsolescence...\n")
-    #fonction_1()
-    print("\n[OK] Module Audit terminé.\n")
-    input("Appuyez sur Entrée pour revenir au menu...")
-   
+    """Pointe maintenant vers le sous-menu audit stylé."""
+    audit_menu()
+
 
 # ===========================================================
 # Boucle principale du menu
@@ -82,10 +125,10 @@ def main_menu():
             clear_screen()
             module_audit()
         elif choice == "0":
-            print("\n Fin du programme. À bientôt !")
+            print("\nFin du programme. À bientôt !")
             break
         else:
-            print("\n Choix invalide. Réessayez.\n")
+            print("\nChoix invalide. Réessayez.\n")
             input("Appuyez sur Entrée pour continuer...")
 
 

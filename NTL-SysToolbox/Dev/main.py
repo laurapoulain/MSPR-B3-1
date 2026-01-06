@@ -29,34 +29,6 @@ def print_header():
     print(f"Date : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
 
-# ===========================================================
-# Sous-menu pour l'audit
-# ===========================================================
-
-def audit_menu():
-    """Sous-menu module d'audit d'obsolescence."""
-    while True:
-        clear_screen()
-        print("=" * 60)
-        print("        MODULE AUDIT D'OBSOLESCENCE - NTL-SysToolbox")
-        print("=" * 60)
-        print("1. Lancer l'audit d'obsolescence")
-        print("0. Retour au menu principal\n")
-
-        choice = input("Votre choix : ").strip()
-
-        if choice == "1":
-            clear_screen()
-            print("[INFO] Exécution du module Audit d'obsolescence...\n")
-            audit_main()   #
-            print("\n[OK] Module Audit terminé.\n")
-            input("Appuyez sur Entrée pour revenir au menu Audit...")
-        elif choice == "0":
-            break
-        else:
-            print("\nChoix invalide. Réessayez.\n")
-            input("Appuyez sur Entrée pour continuer...")
-
 
 # ===========================================================
 # Fonctions des modules
@@ -78,8 +50,12 @@ def module_sauvegarde():
 
 
 def module_audit():
-    """Pointe maintenant vers le sous-menu audit stylé."""
-    audit_menu()
+    print("[INFO] Exécution du module Audit...\n")
+    audit_main()
+    print("\n[OK] Module Audit terminé.\n")
+    input("Appuyez sur Entrée pour revenir au menu...")
+    
+
 
 
 # ===========================================================

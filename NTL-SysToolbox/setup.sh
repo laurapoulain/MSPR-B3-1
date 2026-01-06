@@ -20,7 +20,9 @@ echo "Environnement virtuel activé."
 
 # Lancement automatique du menu principal
 echo "Lancement du menu CLI..."
-python3 Dev/main.py
+#python3 Dev/main.py
+# le module 3 nécessite des droits root pour certaines commandes, donc on lance le  script avec sudo, en forçant sudo à utiliser le python de l'environnement virtuel
+sudo $(which python3) Dev/main.py
 
 # Fin du script
 echo "=== Fin du script setup ==="

@@ -9,6 +9,15 @@ if %errorlevel% neq 0 (
     exit /b
 )
 
+:: Vérification de Nmap
+where nmap >nul 2>nul
+if %errorlevel% neq 0 (
+    echo [ERREUR] Nmap n'est pas détecté sur ce système.
+    echo Veuillez installer Nmap avant de continuer. https://nmap.org/download.html
+    pause
+    exit /b
+)
+
 :: Crée un environnement virtuel
 echo === Creation de l'environnement ===
 python -m venv venv_ntl

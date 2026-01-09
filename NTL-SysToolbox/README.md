@@ -2,51 +2,57 @@
 # Fichier: README.md
 # ========================================
 
-# 🧰 NTL-SysToolbox
+# NTL-SysToolbox
 
 Outil d'administration système pour **NordTransit Logistics**
 
-## 📝 Description
+## Description
 
 NTL-SysToolbox est un outil CLI qui regroupe trois modules essentiels pour l'administration système:
 
-1. **Module Diagnostic** 🔍
+1. **Module Diagnostic** 
    - Vérification des services AD/DNS
    - Test de connexion MySQL WMS
    - Contrôle des ressources serveurs (CPU, RAM, Disque)
 
-2. **Module Sauvegarde WMS** 💾
+2. **Module Sauvegarde WMS** 
    - Sauvegarde complète de la base MySQL
    - Export de tables au format CSV
    - Vérification d'intégrité des backups
 
-3. **Module Audit d'obsolescence** 🧾
+3. **Module Audit d'obsolescence** 
    - Scan réseau pour détecter les équipements
    - Identification des OS et versions
    - Vérification des dates End-of-Life (EOL)
 
-## 📁 Structure du projet
+## Structure du projet
 
 ```
 NTL-SysToolbox/
+NTL-SysToolbox/
+├── backups/                  # Stocke les sauvegardes de bases SQL et exports de table - Module 2
+│
+├── Data/
+│   └── eol.json              # Base des dates de fin de vie (EOL) - Module 3
+│
 ├── Dev/
-│   ├── main.py          # Point d'entrée - Menu interactif
-│   ├── config.py        # Configuration centralisée
-│   ├── utils.py         # Fonctions utilitaires communes
-│   ├── save.py          # Module Sauvegarde WMS ✅
-│   ├── diag.py          # Module Diagnostic (à implémenter)
-│   └── audit.py         # Module Audit (à implémenter)
-├── out/                 # Répertoire de sortie (auto-généré)
-│   ├── backups/         # Sauvegardes SQL/CSV
-│   ├── diagnostics/     # Résultats diagnostics
-│   └── audits/          # Rapports d'audit
-├── .env                 # Configuration locale (NE PAS COMMITER!)
-├── .env.example         # Template de configuration
-├── .gitignore           # Fichiers à ignorer
-├── requirements.txt     # Dépendances Python complètes
-├── requirements-minimal.txt  # Dépendances minimales
-├── setup.sh             # Script d'installation automatique
-└── README.md            # Ce fichier
+│   ├── main.py               # Menu principal
+│   ├── diagnostic.py         # Module 1 -  Diagnostic réseau/système 
+│   ├── sauvegarde.py         # Module 2 - Sauvegarde MySQL
+│   └── audit.py              # Module 3 - Audit d’obsolescence
+│
+├── outputs/                  # Stocke les rapports d'audits - Module 3
+│   ├── audit_ubuntu.json     # Exemple de rapport Ubuntu
+│   └── audit_ws2022.json     # Exemple de rapport Windows Server
+│
+├── .requirements.txt         # Dépendances Python
+├── clean-outputs.sh          # ...
+├── README.md                 # Ce fichier
+
+├── setup.sh                  # Installation Linux
+└── setup.bat                 # Installation Windows
+
+
 
 ```
 
@@ -69,27 +75,6 @@ Le script va:
 - Créer le fichier .env
 - Tester la connexion MySQL
 
-### Méthode 2: Installation manuelle
-
-```bash
-# 1. Créer un environnement virtuel
-python3 -m venv venv
-
-# 2. Activer l'environnement virtuel
-source venv/bin/activate  # Linux/Mac
-# ou
-venv\Scripts\activate     # Windows
-
-# 3. Installer les dépendances
-pip install -r requirements.txt
-
-# 4. Copier et configurer .env
-cp .env.example .env
-nano .env  # Éditer avec vos paramètres
-
-# 5. Créer les répertoires
-mkdir -p out/backups out/diagnostics out/audits
-```
 
 ## ⚙️ Configuration
 
@@ -112,146 +97,6 @@ WMS_DB_HOST=192.168.10.21
 SCAN_NETWORKS=192.168.10.0/24,192.168.20.0/24
 ```
 
-## 📖 Utilisation
-
-### Mode interactif (recommandé)
-
-```bash
-source venv/bin/activate
-cd Dev
-python3 main.py
-```
-
-Un menu vous permettra de choisir le module à exécuter.
-
-### Mode batch (ligne de commande)
-
-```bash
-cd Dev
-
-# Sauvegarde seulement
-python3 main.py --mode sauvegarde
-
-# Diagnostic seulement
-python3 main.py --mode diagnostic
-
-# Audit seulement
-python3 main.py --mode audit
-
-# Tous les modules
-python3 main.py --mode all
-```
-
-### Exemples spécifiques
-
-```bash
-# Test du module sauvegarde seul
-cd Dev
-python3 save.py
-
-# Afficher la configuration
-python3 config.py
-
-# Tester les utilitaires
-python3 utils.py
-```
-
-## 📊 Outputs
-
-Tous les résultats sont sauvegardés dans `out/`:
-
-- **JSON horodaté**: Format structuré pour exploitation automatique
-- **Fichiers SQL**: Sauvegardes complètes de la base
-- **Fichiers CSV**: Exports de tables spécifiques
-- **Rapports**: Résultats d'audit et diagnostic
-
-### Exemple de sortie JSON
-
-```json
-{
-  "timestamp": "2025-12-16T14:30:00",
-  "status": "success",
-  "message": "Sauvegarde créée avec succès",
-  "filepath": "out/backups/wms_backup_20251216_143000.sql",
-  "size_mb": 2.45
-}
-```
-
-## 🧪 Tests
-
-### Base de données de test
-
-Un script SQL est fourni pour créer une base de test:
-
-```bash
-# Créer la base
-mysql -u root -p -e "CREATE DATABASE wms_ntl;"
-
-# Importer le schéma et les données
-mysql -u root -p wms_ntl < wms_test_db.sql
-
-# Vérifier
-mysql -u root -p -e "USE wms_ntl; SHOW TABLES;"
-```
-
-### Tests unitaires
-
-```bash
-# Tester le module config
-python3 Dev/config.py
-
-# Tester les utilitaires
-python3 Dev/utils.py
-
-# Tester le module sauvegarde
-python3 Dev/save.py
-```
-
-## 🔐 Sécurité
-
-- ❌ **Ne jamais commiter le fichier `.env`**
-- ✅ Utiliser des comptes avec permissions minimales
-- ✅ Protéger les fichiers de sauvegarde (chiffrement recommandé)
-- ✅ Restreindre l'accès au répertoire `out/`
-- ✅ Nettoyer régulièrement les anciennes sauvegardes
-
-## 🔧 Dépannage
-
-### Erreur: "mysqldump not found"
-
-```bash
-# Ubuntu/Debian
-sudo apt install mysql-client
-
-# CentOS/RHEL
-sudo yum install mysql
-
-# macOS
-brew install mysql-client
-```
-
-### Erreur: "Access denied for user"
-
-```bash
-# Vérifier les permissions MySQL
-mysql -u root -p -e "SHOW GRANTS FOR 'votre_user'@'localhost';"
-
-# Créer un utilisateur dédié
-mysql -u root -p
-CREATE USER 'ntl_backup'@'localhost' IDENTIFIED BY 'password';
-GRANT SELECT, LOCK TABLES ON wms_ntl.* TO 'ntl_backup'@'localhost';
-FLUSH PRIVILEGES;
-```
-
-### Erreur: "Can't connect to MySQL server"
-
-```bash
-# Vérifier que MySQL est démarré
-sudo systemctl status mysql
-
-# Vérifier le port
-sudo netstat -tlnp | grep 3306
-```
 
 ## 📚 Documentation
 
@@ -278,7 +123,7 @@ Pour toute question ou problème:
 ---
 
 **Version**: 1.0.0  
-**Dernière mise à jour**: Décembre 2025
+**Dernière mise à jour**: Janvier 2025
 
 # ========================================
 # FIN DE README.md

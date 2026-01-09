@@ -3,7 +3,7 @@ echo "=== Installation de NTL-SysToolbox ==="
 
 # Mise à jour et dépendances
 sudo apt update -y
-sudo apt install -y mysql-client python3-venv
+sudo apt install -y mysql-client python3-venv nmap
 
 
 # Création environnement virtuel
@@ -20,7 +20,9 @@ echo "Environnement virtuel activé."
 
 # Lancement automatique du menu principal
 echo "Lancement du menu CLI..."
-python3 Dev/main.py
+#python3 Dev/main.py
+# le module 3 nécessite des droits root pour certaines commandes, donc on lance le  script avec sudo, en forçant sudo à utiliser le python de l'environnement virtuel
+sudo $(which python3) Dev/main.py
 
 # Fin du script
 echo "=== Fin du script setup ==="

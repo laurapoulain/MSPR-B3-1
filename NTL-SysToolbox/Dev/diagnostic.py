@@ -248,17 +248,3 @@ def main():
 # sans rapport généré - sortie normale
 if __name__ == "__main__":
     main()
-
-# optionnel : rapport de diagnostic
-if __name__ == "__main__":    
-    import sys
-
-    # Lance le diagnostic et capture la sortie dans un fichier
-    original_stdout = sys.stdout  # garde la sortie console normale
-    with open("diagnostics/rapport_diagnostic.csv", "w", encoding="utf-8") as f:
-        sys.stdout = f  # redirige tous les prints vers le fichier
-        main()          # ta fonction principale (celle qui lance tout ton diagnostic)
-        sys.stdout = original_stdout  # restaure la sortie console
-
-    print("Rapport enregistré dans diagnostics/rapport_diagnostic.csv ")
-

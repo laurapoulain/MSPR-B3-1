@@ -9,11 +9,8 @@ from datetime import datetime
 # Import des modules
 from diagnostic import main as diagnostic_main
 from sauvegarde import sauvegarde_sql, export_table_csv
+from audit import main as audit_main
 
-try:
-    from audit import main as audit_main  # si le module 3 est dispo
-except ImportError:
-    audit_main = None
 
 
 # ===========================================================
@@ -30,6 +27,7 @@ def print_header():
     print("              NTL-SysToolbox - Menu CLI")
     print("=" * 60)
     print(f"Date : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+
 
 
 # ===========================================================
@@ -52,11 +50,13 @@ def module_sauvegarde():
 
 
 def module_audit():
-    print("[INFO] Exécution du module Audit d'obsolescence...\n")
-    #fonction_1()
+    print("[INFO] Exécution du module Audit...\n")
+    audit_main()
     print("\n[OK] Module Audit terminé.\n")
     input("Appuyez sur Entrée pour revenir au menu...")
-   
+    
+
+
 
 # ===========================================================
 # Boucle principale du menu
@@ -82,10 +82,10 @@ def main_menu():
             clear_screen()
             module_audit()
         elif choice == "0":
-            print("\n Fin du programme. À bientôt !")
+            print("\nFin du programme. À bientôt !")
             break
         else:
-            print("\n Choix invalide. Réessayez.\n")
+            print("\nChoix invalide. Réessayez.\n")
             input("Appuyez sur Entrée pour continuer...")
 
 

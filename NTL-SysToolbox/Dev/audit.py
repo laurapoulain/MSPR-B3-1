@@ -203,13 +203,13 @@ def list_os_versions(os_name: str, eol_db: Dict[str, Dict[str, str]]) -> None:
 
 def run_csv_audit_flow() -> None:
     """Audit à partir d'un inventaire CSV."""
-    inventory_path = console.input("Chemin du fichier CSV d'inventaire : ").strip()
+    inventory_path = console.input("Chemin du fichier CSV d'inventaire (par défaut : outputs/fichier-existant.csv) : ").strip()
     console.print("\n[bold cyan][INFO][/bold cyan] Lecture de l'inventaire...")
     components = parse_inventory_csv(inventory_path)
 
     eol_path = console.input("Chemin du fichier JSON EOL (par défaut : Data/eol.json) : ").strip()
-    output_csv = console.input("Chemin du rapport CSV de sortie : ").strip()
-    output_json = console.input("Chemin du rapport JSON de sortie : ").strip()
+    output_csv = console.input("Chemin du rapport CSV de sortie (par défaut : outputs/votre_ficher.csv): ").strip()
+    output_json = console.input("Chemin du rapport JSON de sortie (par défaut : outputs/votre_ficher.json) : ").strip()
     warning_months_str = console.input(
         "Nombre de mois avant EOL pour passer en 'warning' (12 par défaut) : "
     ).strip()

@@ -18,7 +18,7 @@ import pyfiglet
 
 console = Console()
 
-# Gestion de l'affichage de la console du module
+# Gestion de l'affichage de la console du module - commandes différentes selon l'OS
 import os
 def clear_screen():
     if os.name == "nt":   # Windows

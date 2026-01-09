@@ -207,7 +207,7 @@ def run_csv_audit_flow() -> None:
     console.print("\n[bold cyan][INFO][/bold cyan] Lecture de l'inventaire...")
     components = parse_inventory_csv(inventory_path)
 
-    eol_path = console.input("Chemin du fichier JSON EOL : ").strip()
+    eol_path = console.input("Chemin du fichier JSON EOL (par défaut : Data/eol.json) : ").strip()
     output_csv = console.input("Chemin du rapport CSV de sortie : ").strip()
     output_json = console.input("Chemin du rapport JSON de sortie : ").strip()
     warning_months_str = console.input(
@@ -236,9 +236,9 @@ def run_scan_audit_flow() -> None:
     components = scan_network_simple(cidr)
     console.print(f"[bold cyan][INFO][/bold cyan] {len(components)} machine(s) détectée(s).")
 
-    eol_path = console.input("Chemin du fichier JSON EOL : ").strip()
-    output_csv = console.input("Chemin du rapport CSV de sortie : ").strip()
-    output_json = console.input("Chemin du rapport JSON de sortie : ").strip()
+    eol_path = console.input("Chemin du fichier JSON EOL (par défaut : Data/eol.json) : ").strip()
+    output_csv = console.input("Chemin du rapport CSV de sortie (par défaut : outputs/votre_ficher.csv) : ").strip()
+    output_json = console.input("Chemin du rapport JSON de sortie (par défaut : outputs/votre_ficher.json) : ").strip()
     warning_months_str = console.input(
         "Nombre de mois avant EOL pour passer en 'warning' (12 par défaut) : "
     ).strip()
@@ -261,7 +261,7 @@ def run_scan_audit_flow() -> None:
 
 def run_eol_consult_flow() -> None:
     """Consultation des EOL pour un OS."""
-    eol_path = console.input("Chemin du fichier JSON EOL : ").strip()
+    eol_path = console.input("Chemin du fichier JSON EOL (par défaut : Data/eol.json) : ").strip()
     eol_db = load_eol_database(eol_path)
     os_name = console.input("Nom de l'OS (ex: 'Windows Server' ou 'Ubuntu') : ").strip()
     console.print("")  # petite ligne vide

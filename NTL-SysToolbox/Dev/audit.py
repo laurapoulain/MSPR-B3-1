@@ -18,6 +18,14 @@ import pyfiglet
 
 console = Console()
 
+# Gestion de l'affichage de la console du module
+import os
+def clear_screen():
+    if os.name == "nt":   # Windows
+        os.system("cls")
+    else:
+        console.clear()
+
 
 def scan_network_simple(cidr: str) -> List[Dict[str, str]]:
     """
@@ -262,16 +270,9 @@ def run_scan_audit_flow() -> None:
     "Chemin du fichier JSON EOL (par défaut : Data/eol.json) : ",
     "Data/eol.json")
 
-    #output_csv = console.input("Chemin du rapport CSV de sortie (par défaut : outputs/votre_ficher.csv) : ").strip()
-    output_csv = ask_existing_file(
-    "Chemin du rapport CSV de sortie (par défaut : outputs/votre_ficher.csv) : ",
-    "outputs/votre_ficher.csv")
-    
-    #output_json = console.input("Chemin du rapport JSON de sortie (par défaut : outputs/votre_ficher.json) : ").strip()
-    output_json = ask_existing_file(
-    "Chemin du rapport JSON de sortie (par défaut : outputs/votre_ficher.json) : ",
-    "outputs/votre_ficher.json")
-    
+    output_csv = console.input("Chemin du rapport CSV de sortie (par défaut : outputs/votre_ficher.csv) : ").strip()
+    output_json = console.input("Chemin du rapport JSON de sortie (par défaut : outputs/votre_ficher.json) : ").strip()
+
     warning_months_str = console.input(
         "Nombre de mois avant EOL pour passer en 'warning' (12 par défaut) : "
     ).strip()
@@ -312,7 +313,7 @@ def run_eol_consult_flow() -> None:
 def run_audit_obsolescence() -> None:
     """Menu interactif du module d'audit d'obsolescence."""
     while True:
-        console.clear()
+        clear_screen()
 
         banner = pyfiglet.figlet_format("AUDIT EOL", font="slant")
         console.print(f"[bold magenta]{banner}[/bold magenta]")
@@ -331,17 +332,17 @@ def run_audit_obsolescence() -> None:
         mode = console.input("\n[bold cyan]Votre choix[/bold cyan] : ").strip() or "1"
 
         if mode == "1":
-            console.clear()
+            clear_screen()()
             console.print(Rule("[bold cyan]Audit CSV d'inventaire[/bold cyan]"))
             run_csv_audit_flow()
             console.input("\n[dim]Appuyez sur Entrée pour revenir au menu Audit...[/dim]")
         elif mode == "2":
-            console.clear()
+            clear_screen()
             console.print(Rule("[bold cyan]Scan réseau + audit[/bold cyan]"))
             run_scan_audit_flow()
             console.input("\n[dim]Appuyez sur Entrée pour revenir au menu Audit...[/dim]")
         elif mode == "3":
-            console.clear()
+            clear_screen()
             console.print(Rule("[bold cyan]Consultation des dates EOL[/bold cyan]"))
             run_eol_consult_flow()
             console.input("\n[dim]Appuyez sur Entrée pour revenir au menu Audit...[/dim]")

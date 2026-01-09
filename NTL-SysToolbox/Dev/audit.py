@@ -232,7 +232,7 @@ def run_csv_audit_flow() -> None:
 
 def run_scan_audit_flow() -> None:
     """Audit après scan réseau Nmap."""
-    cidr = console.input("Plage réseau à scanner (ex: 192.168.56.0/24) : ").strip()
+    cidr = console.input("Plage réseau à scanner (ex: 192.168.10.0/24) : ").strip()
     components = scan_network_simple(cidr)
     console.print(f"[bold cyan][INFO][/bold cyan] {len(components)} machine(s) détectée(s).")
 
@@ -267,7 +267,7 @@ def run_eol_consult_flow() -> None:
     console.print("")  # petite ligne vide
     list_os_versions(os_name, eol_db)
 
-
+ 
 # ===========================================================
 # Menu du module audit
 # ===========================================================

@@ -4,7 +4,7 @@
 # ========================================
 #!/bin/bash
 
-echo "🧹 Nettoyage des anciens outputs..."
+echo "Nettoyage des anciens outputs..."
 
 # Fonction pour demander confirmation
 confirm() {
@@ -35,9 +35,9 @@ if confirm "Voulez-vous supprimer tous ces fichiers ?"; then
     rm -rf out/backups/*
     rm -rf out/diagnostics/*
     rm -rf out/audits/*
-    echo "✅ Outputs nettoyés"
+    echo "Outputs nettoyés"
 else
-    echo "❌ Annulé"
+    echo "Annulé"
 fi
 
 # ========================================

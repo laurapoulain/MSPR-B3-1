@@ -1,8 +1,6 @@
 # ========================================
-# Fichier: README.md
-# ========================================
-
 # NTL-SysToolbox
+# ========================================
 
 Outil d'administration système pour **NordTransit Logistics**
 
@@ -140,7 +138,3 @@ Pour toute question ou problème:
 
 **Version**: 1.0.0  
 **Dernière mise à jour**: Février 2026
-
-# ========================================
-# FIN DE README.md
-# ========================================

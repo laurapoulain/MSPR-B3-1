@@ -83,30 +83,47 @@ Le script va:
 ```bash
 # MySQL (obligatoire pour le module sauvegarde)
 MYSQL_HOST=localhost
-MYSQL_PORT=3306
+MYSQL_PORT=XXXX
 MYSQL_USER=root
 MYSQL_PASSWORD=votre_mot_de_passe
-MYSQL_DATABASE=wms_ntl
+MYSQL_DATABASE=name_database
 
 # Serveurs à monitorer
-AD_SERVERS=192.168.10.10,192.168.10.11
-DNS_SERVERS=192.168.10.10,192.168.10.11
-WMS_DB_HOST=192.168.10.21
+AD_SERVERS=192.168.x.x,192.168.x.x
+AD_DOMAINS=domaine.local
+DNS_SERVERS=192.168.x.x,192.168.x.x
+WMS_DB_HOST=192.168.x.x
+WMS_DB_PORT=XXXX
+
+# Windows Server
+WIN_HOST=192.168.x.x
+WIN_USER=domaine\administrateur
+WIN_PASS=votre_mot_de_passe
+
+# Serveur Linux 
+LINUX_HOST=192.168.x.x
+LINUX_USER=user
+LINUX_PASS=votre_mot_de_passe
+
+
+#  Client Linux 
+LINUX_CLIENT=192.168.x.x
+LINUX_CLIENT_USER=user
+LINUX_CLIENT_PASS=votre_mot_de_passe
 
 # Réseaux à scanner
-SCAN_NETWORKS=192.168.10.0/24,192.168.20.0/24
+SCAN_NETWORKS=192.168.x.0/24,192.168.x.0/24
 ```
 
 
 ## 📚 Documentation
 
-- Guide de test complet: voir `test_guide.md`
-- Cahier des charges: voir `Sujet_N°1.pdf`
-- Documentation API: générée avec `pydoc`
+- Guide d'installation et d'utilisation : voir `Guide NTL-SysToolbox.pdf`
+- Dossier explicatif : voir `Dossier technique.pdf`
 
 ## 👥 Équipe
 
-Projet MSPR - Équipe de 4-5 étudiants
+Projet MSPR - Équipe de 4 étudiants
 Durée: 19 heures de préparation
 
 ## 📄 Licence
@@ -117,13 +134,12 @@ Projet académique - Tous droits réservés
 
 Pour toute question ou problème:
 1. Vérifier la configuration avec `python3 main.py` option 5
-2. Consulter le guide de dépannage ci-dessus
-3. Contacter l'encadrant pédagogique
+2. Consulter le guide utilisateur
 
 ---
 
 **Version**: 1.0.0  
-**Dernière mise à jour**: Janvier 2025
+**Dernière mise à jour**: Février 2026
 
 # ========================================
 # FIN DE README.md
